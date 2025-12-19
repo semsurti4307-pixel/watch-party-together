@@ -112,7 +112,7 @@ export const RoomView: React.FC<RoomViewProps> = ({
                 <Input
                   value={newVideoUrl}
                   onChange={(e) => setNewVideoUrl(e.target.value)}
-                  placeholder="Enter video URL (mp4, YouTube embed, etc.)"
+                  placeholder="YouTube link or direct video URL"
                   className="flex-1"
                 />
                 <Button type="submit">Update</Button>
