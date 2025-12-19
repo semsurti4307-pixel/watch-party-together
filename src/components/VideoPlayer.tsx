@@ -11,6 +11,24 @@ interface VideoPlayerProps {
   isHost: boolean;
 }
 
+// Extract YouTube video ID from various URL formats
+const getYouTubeVideoId = (url: string): string | null => {
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
+    /youtube\.com\/shorts\/([^&\n?#]+)/,
+  ];
+  
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) return match[1];
+  }
+  return null;
+};
+
+const isYouTubeUrl = (url: string): boolean => {
+  return getYouTubeVideoId(url) !== null;
+};
+
 export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   videoUrl,
   videoState,
@@ -26,9 +44,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [showControls, setShowControls] = useState(true);
   const controlsTimeout = useRef<NodeJS.Timeout>();
 
+  const isYouTube = isYouTubeUrl(videoUrl);
+  const youtubeId = isYouTube ? getYouTubeVideoId(videoUrl) : null;
+
   useEffect(() => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video || isYouTube) return;
 
     const handleLoadedMetadata = () => {
       setDuration(video.duration);
@@ -45,18 +66,18 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       video.removeEventListener('loadedmetadata', handleLoadedMetadata);
       video.removeEventListener('timeupdate', handleTimeUpdate);
     };
-  }, []);
+  }, [isYouTube]);
 
   useEffect(() => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video || isYouTube) return;
 
     if (videoState.isPlaying) {
       video.play().catch(console.error);
     } else {
       video.pause();
     }
-  }, [videoState.isPlaying]);
+  }, [videoState.isPlaying, isYouTube]);
 
   const handleMouseMove = () => {
     setShowControls(true);
@@ -71,19 +92,20 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   };
 
   const togglePlay = () => {
+    if (isYouTube) return; // YouTube controls its own playback
     onStateChange({ isPlaying: !videoState.isPlaying });
   };
 
   const toggleMute = () => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video || isYouTube) return;
     video.muted = !isMuted;
     setIsMuted(!isMuted);
   };
 
   const handleVolumeChange = (value: number[]) => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video || isYouTube) return;
     const newVolume = value[0];
     video.volume = newVolume;
     setVolume(newVolume);
@@ -92,7 +114,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   const handleSeek = (value: number[]) => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video || isYouTube) return;
     video.currentTime = value[0];
     setCurrentTime(value[0]);
     onStateChange({ currentTime: value[0] });
@@ -100,7 +122,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   const skip = (seconds: number) => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video || isYouTube) return;
     video.currentTime = Math.max(0, Math.min(video.currentTime + seconds, duration));
   };
 
@@ -119,6 +141,42 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
+  // YouTube embed
+  if (isYouTube && youtubeId) {
+    return (
+      <div
+        ref={containerRef}
+        className="relative w-full aspect-video bg-black rounded-xl overflow-hidden"
+      >
+        <iframe
+          src={`https://www.youtube.com/embed/${youtubeId}?autoplay=0&rel=0&modestbranding=1`}
+          className="w-full h-full"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+          allowFullScreen
+          title="YouTube video player"
+        />
+        
+        {/* YouTube overlay info */}
+        <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/60 to-transparent pointer-events-none">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-foreground/80 bg-destructive/80 px-2 py-1 rounded flex items-center gap-1">
+              <Play className="w-3 h-3" /> YouTube Video
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleFullscreen}
+              className="text-foreground hover:bg-secondary/50 pointer-events-auto"
+            >
+              <Maximize className="w-5 h-5" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Regular video player
   return (
     <div
       ref={containerRef}

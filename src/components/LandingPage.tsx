@@ -173,10 +173,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onCreateRoom, onJoinRo
                 <Input
                   value={videoUrl}
                   onChange={(e) => setVideoUrl(e.target.value)}
-                  placeholder="Paste video URL or leave default"
+                  placeholder="YouTube link or direct video URL"
                 />
                 <p className="text-xs text-muted-foreground mt-1.5">
-                  Supports MP4 files and direct video links
+                  Supports YouTube links, MP4 files, and direct video URLs
                 </p>
               </div>
             )}
